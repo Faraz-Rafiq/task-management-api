@@ -1,14 +1,28 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
+import enum
 from app.db.base import Base
 
-class User(Base):
-    __tablename__ = "users"
+class TaskStatus(str, enum.Enum):
+    pending = "pending"
+    in_progress = "in_progress"
+    completed = "completed"
+    cancelled = "cancelled"
+
+class TaskPriority(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    urgent = "urgent"
+
+class Task(Base):
+    __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, nullable=False, index=True)
-    full_name = Column(String, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    status = Column(Enum(TaskStatus), default=TaskStatus.pending)
+    priority = Column(Enum(TaskPriority), default=TaskPriority.medium)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

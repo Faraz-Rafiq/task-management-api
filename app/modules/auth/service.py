@@ -1,51 +1,44 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from passlib.context import CryptContext
-from jose import jwt
-from datetime import datetime, timedelta
-from app.modules.auth.repository import user_repository
-from app.modules.auth.schema import UserCreate
-from app.core.config import settings
+from app.modules.tasks.repository import task_repository
+from app.modules.tasks.schema import TaskCreate, TaskUpdate
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+class TaskService:
 
-class AuthService:
-    def hash_password(self, password: str) -> str:
-        return pwd_context.hash(password)
+    def create_task(self, db: Session, task_data: TaskCreate, 
+                    owner_id: int):
+        return task_repository.create(db, task_data, owner_id)
 
-    def verify_password(self, plain: str, hashed: str) -> bool:
-        return pwd_context.verify(plain, hashed)
-
-    def create_token(self, user_id: int) -> str:
-        expire = datetime.utcnow() + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-        return jwt.encode(
-            {"sub": str(user_id), "exp": expire},
-            settings.SECRET_KEY,
-            algorithm="HS256"
-        )
-
-    def register(self, db: Session, data: UserCreate):
-        existing = user_repository.get_by_email(db, data.email)
-        if existing:
+    def get_task(self, db: Session, task_id: int, owner_id: int):
+        task = task_repository.get_by_id(db, task_id, owner_id)
+        if not task:
             raise HTTPException(
-                status_code=400,
-                detail={"error": {"code": "DUPLICATE_EMAIL",
-                                  "message": "Email already registered"}}
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "TASK_NOT_FOUND",
+                        "message": "Task not found"
+                    }
+                }
             )
-        hashed = self.hash_password(data.password)
-        return user_repository.create(db, data.email, data.full_name, hashed)
+        return task
 
-    def login(self, db: Session, email: str, password: str):
-        user = user_repository.get_by_email(db, email)
-        if not user or not self.verify_password(password, user.hashed_password):
-            raise HTTPException(
-                status_code=401,
-                detail={"error": {"code": "INVALID_CREDENTIALS",
-                                  "message": "Invalid email or password"}}
-            )
-        token = self.create_token(user.id)
-        return {"access_token": token, "token_type": "bearer"}
+    def get_all_tasks(self, db: Session, owner_id: int,
+                      status: str = None, priority: str = None,
+                      skip: int = 0, limit: int = 20):
+        tasks, total = task_repository.get_all(
+            db, owner_id, status, priority, skip, limit
+        )
+        return {"tasks": tasks, "total": total}
 
-auth_service = AuthService()
+    def update_task(self, db: Session, task_id: int,
+                    update_data: TaskUpdate, owner_id: int):
+        task = self.get_task(db, task_id, owner_id)
+        return task_repository.update(db, task, update_data)
+
+    def delete_task(self, db: Session, task_id: int, owner_id: int):
+        task = self.get_task(db, task_id, owner_id)
+        task_repository.delete(db, task)
+        return {"message": "Task deleted successfully"}
+
+task_service = TaskService()
