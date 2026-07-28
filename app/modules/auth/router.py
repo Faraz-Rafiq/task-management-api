@@ -1,3 +1,4 @@
+router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
