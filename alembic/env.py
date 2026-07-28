@@ -4,6 +4,7 @@ from alembic import context
 from app.core.config import settings
 from app.db.base import Base
 from app.modules.tasks.model import Task
+from app.modules.auth.model import User
 
 config = context.config
 
