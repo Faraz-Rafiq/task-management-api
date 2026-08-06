@@ -23,3 +23,4 @@ Production-style REST API built with FastAPI and PostgreSQL.
 - User registration and login
 - JWT authentication
 - Alembic migrations
+hello
